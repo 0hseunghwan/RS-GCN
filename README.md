@@ -1,5 +1,20 @@
 # RS-GCN
 
+A paper recommendation project that uses embeddings learned by a Graph Convolutional Network (GCN) to recommend similar papers. It trains a GCN on the [Cora](https://paperswithcode.com/dataset/cora) citation network dataset, then serves a recommendation API (FastAPI) based on cosine similarity between the learned embeddings.
+
+## Components
+
+- `models/gcn.py` — GCN model definitions
+  - `GCN`: a 2-layer GCN for node classification (`log_softmax` output)
+  - `GCNEncoder`: an embedding encoder for the recommender (no classification head, outputs embeddings only)
+- `train.py` — Trains the `GCN` node-classification model on the Cora dataset and evaluates accuracy
+- `train_RS.py` — Trains `GCNEncoder` to produce paper embeddings and generates the data the recommender needs (`data/embeddings.npy`, `data/papers.json`, `data/edges.json`)
+- `RS.py` — `PaperRecommender` class that loads the trained embeddings and performs keyword/category-based similar-paper search
+- `app.py` — FastAPI application that serves the recommender
+- `requirements.txt` — Dependency list
+
+## Installation
+=======
 Graph Convolutional Network(GCN)으로 학습한 논문 임베딩을 이용해 유사 논문을 추천하는 프로젝트입니다. [Cora](https://paperswithcode.com/dataset/cora) 인용 네트워크 데이터셋을 사용해 GCN을 학습하고, 학습된 임베딩 사이의 코사인 유사도를 기반으로 논문 추천 API(FastAPI)를 제공합니다.
 
 ## 구성 요소
@@ -19,6 +34,14 @@ Graph Convolutional Network(GCN)으로 학습한 논문 임베딩을 이용해 �
 pip install -r requirements.txt
 ```
 
+> `torch`, `torch-geometric`, and their extensions (`torch_scatter`, `torch_sparse`) may need builds matching your PyTorch/CUDA version. Depending on your environment, install them separately following the [official PyG installation guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html).
+
+## Usage
+
+### 1. Train the GCN node classifier (optional)
+
+Check baseline GCN classification performance on the Cora dataset.
+=======
 > `torch`, `torch-geometric`과 관련 확장(`torch_scatter`, `torch_sparse`)은 사용 중인 PyTorch/CUDA 버전에 맞는 빌드가 필요할 수 있습니다. 환경에 따라 [PyG 공식 설치 가이드](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)를 참고해 별도로 설치하세요.
 
 ## 사용 방법
@@ -31,6 +54,10 @@ Cora 데이터셋으로 기본 GCN 분류 성능을 확인합니다.
 python train.py
 ```
 
+### 2. Generate embeddings for the recommender (required)
+
+Trains `GCNEncoder` and generates paper embeddings and metadata under `data/`. This must be run before starting the recommendation API.
+=======
 ### 2. 추천 시스템용 임베딩 생성 (필수)
 
 `GCNEncoder`를 학습시켜 논문 임베딩과 메타데이터를 `data/` 디렉터리에 생성합니다. 추천 API를 실행하기 전에 반드시 먼저 실행해야 합니다.
@@ -39,6 +66,14 @@ python train.py
 python train_RS.py
 ```
 
+Once finished, the following files are created:
+
+- `data/embeddings.npy` — GCN embeddings for each paper (node)
+- `data/papers.json` — Paper metadata (id, title, label, category)
+- `data/edges.json` — List of citation edges
+
+### 3. Run the recommendation API server
+=======
 실행이 완료되면 다음 파일이 생성됩니다.
 
 - `data/embeddings.npy` — 논문(노드) GCN 임베딩
@@ -51,6 +86,20 @@ python train_RS.py
 python app.py
 ```
 
+The server runs on `http://localhost:8000` by default.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/` | Main page (`static/index.html`) |
+| GET | `/api/search?q={query}&top_k={n}` | Search for similar papers by keyword/category |
+| GET | `/api/paper/{paper_id}` | Details for a specific paper plus similar papers |
+| GET | `/api/categories` | List of all categories with paper counts |
+| GET | `/api/graph?limit={n}` | Node/edge graph data for visualization |
+
+Example:
+=======
 서버는 기본적으로 `http://localhost:8000` 에서 실행됩니다.
 
 ## API 엔드포인트
@@ -69,6 +118,10 @@ python app.py
 curl "http://localhost:8000/api/search?q=neural+networks&top_k=5"
 ```
 
+## Dataset
+
+Uses the [Planetoid Cora](https://paperswithcode.com/dataset/cora) dataset, classified into 7 categories:
+=======
 ## 데이터셋
 
 [Planetoid Cora](https://paperswithcode.com/dataset/cora) 데이터셋을 사용하며, 7개 카테고리로 분류됩니다.
@@ -81,4 +134,6 @@ curl "http://localhost:8000/api/search?q=neural+networks&top_k=5"
 - Rule Learning
 - Theory
 
+Since Cora does not include real paper titles, `train_RS.py` generates placeholder titles based on each paper's category.
+=======
 Cora 데이터셋에는 실제 논문 제목이 포함되어 있지 않아, `train_RS.py`에서 카테고리 기반으로 가상의 논문 제목을 생성해 사용합니다.
